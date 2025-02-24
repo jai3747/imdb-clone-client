@@ -1,0 +1,519 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  MONGO_URL: ${{ secrets.MONGO_URL }}
+  SEMGREP_TOKEN: ${{ secrets.SEMGREP_TOKEN }}
+  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  CLUSTER_NAME: cluster-1
+  CLUSTER_ZONE: asia-south1-a
+  APP_DOMAIN: http://myapp.jayachandran.xyz
+  FRONTEND_IMAGE: jai3747/imdb-clone-frontend-prod
+  BACKEND_IMAGE: jai3747/imdb-clone-backend-prod
+  HELM_VERSION: v3.12.0
+  CHART_PATH: ./imdb-clone
+  DEBUG_WORKFLOW: 'true'
+
+jobs:
+  # Frontend Security Scans
+  frontend-trufflehog:
+    name: 🐷 Frontend TruffleHog
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Frontend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-frontend
+        token: ${{ secrets.GH_PAT }}
+        fetch-depth: 0
+        clean: true
+        force: true
+    - name: TruffleHog Scan
+      uses: trufflesecurity/trufflehog@v3.63.3
+      continue-on-error: true
+      with:
+        path: .
+        base: ${{ github.event.before }}
+        head: ${{ github.sha }}
+        extra_args: --json --output trufflehog-frontend-report.json
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-trufflehog-report
+        path: trufflehog-frontend-report.json
+        retention-days: 30
+
+  frontend-semgrep:
+    name: 🔍 Frontend Semgrep
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Frontend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-frontend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Semgrep Scan
+      uses: semgrep/semgrep-action@v1
+      continue-on-error: true
+      with:
+        config: p/javascript
+        output: semgrep-frontend-results.json
+        json: true
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-semgrep-report
+        path: semgrep-frontend-results.json
+        retention-days: 30
+
+  frontend-snyk:
+    name: 🛡️ Frontend Snyk
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Frontend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-frontend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Snyk Scan
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        command: test --json > snyk-frontend-report.json
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-snyk-report
+        path: snyk-frontend-report.json
+        retention-days: 30
+
+  frontend-checkov:
+    name: 🏗️ Frontend Checkov
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Frontend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-frontend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Checkov Scan
+      uses: bridgecrewio/checkov-action@v12
+      continue-on-error: true
+      with:
+        directory: .
+        framework: dockerfile,kubernetes,secrets
+        output: json
+        output-file-path: checkov-frontend-report.json
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-checkov-report
+        path: checkov-frontend-report.json
+        retention-days: 30
+
+  frontend-kubesec:
+    name: 🎯 Frontend Kubesec
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Frontend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-frontend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Install kubesec
+      run: |
+        wget https://github.com/controlplaneio/kubesec/releases/download/v2.11.5/kubesec_linux_amd64.tar.gz
+        tar xzf kubesec_linux_amd64.tar.gz
+        sudo mv kubesec /usr/local/bin/
+    - name: Run kubesec scans
+      continue-on-error: true
+      run: |
+        for file in backup.yaml backup-pipeline.yaml pipeline.yaml; do
+          if [ -f "$file" ]; then
+            kubesec scan -f json "$file" > "kubesec-frontend-$(basename "$file" .yaml)-report.json" || true
+          fi
+        done
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-kubesec-reports
+        path: kubesec-frontend-*.json
+        retention-days: 30
+
+  # Backend Security Scans
+  backend-trufflehog:
+    name: 🐷 Backend TruffleHog
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-backend
+        token: ${{ secrets.GH_PAT }}
+        fetch-depth: 0
+        clean: true
+        force: true
+    - name: TruffleHog Scan
+      uses: trufflesecurity/trufflehog@v3.63.3
+      continue-on-error: true
+      with:
+        path: .
+        base: ${{ github.event.before }}
+        head: ${{ github.sha }}
+        extra_args: --json --output trufflehog-backend-report.json
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-trufflehog-report
+        path: trufflehog-backend-report.json
+        retention-days: 30
+
+  backend-semgrep:
+    name: 🔍 Backend Semgrep
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-backend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Semgrep Scan
+      uses: semgrep/semgrep-action@v1
+      continue-on-error: true
+      with:
+        config: p/javascript
+        output: semgrep-backend-results.json
+        json: true
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-semgrep-report
+        path: semgrep-backend-results.json
+        retention-days: 30
+
+  backend-snyk:
+    name: 🛡️ Backend Snyk
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-backend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Snyk Scan
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        command: test --json > snyk-backend-report.json
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-snyk-report
+        path: snyk-backend-report.json
+        retention-days: 30
+
+  backend-checkov:
+    name: 🏗️ Backend Checkov
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-backend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Checkov Scan
+      uses: bridgecrewio/checkov-action@v12
+      continue-on-error: true
+      with:
+        directory: .
+        framework: dockerfile,kubernetes,secrets
+        output: json
+        output-file-path: checkov-backend-report.json
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-checkov-report
+        path: checkov-backend-report.json
+        retention-days: 30
+
+  backend-kubesec:
+    name: 🎯 Backend Kubesec
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-backend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+    - name: Install kubesec
+      run: |
+        wget https://github.com/controlplaneio/kubesec/releases/download/v2.11.5/kubesec_linux_amd64.tar.gz
+        tar xzf kubesec_linux_amd64.tar.gz
+        sudo mv kubesec /usr/local/bin/
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: 'v3.12.3'
+    - name: Create merged Helm templates
+      run: |
+        helm template imdb-clone ./imdb-clone > all-manifests.yaml || true
+    - name: Run kubesec scans
+      continue-on-error: true
+      run: |
+        for file in k8.yaml test-working-fine.yaml all-tested-pipeline.yaml; do
+          if [ -f "$file" ]; then
+            kubesec scan -f json "$file" > "kubesec-backend-$(basename "$file" .yaml)-report.json" || true
+          fi
+        done
+
+        if [ -f "all-manifests.yaml" ]; then
+          kubesec scan -f json all-manifests.yaml > kubesec-backend-helm-report.json || true
+        fi
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-kubesec-reports
+        path: kubesec-backend-*.json
+        retention-days: 30
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf ./*
+        rm -rf ./.* || true
+
+    - name: Checkout Frontend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-frontend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        fetch-depth: 1
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "18"
+        cache: 'npm'
+        cache-dependency-path: './package-lock.json'
+
+    - name: Install Frontend Dependencies
+      run: |
+        npm install --legacy-peer-deps
+        npm cache verify
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and Push Frontend Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ env.FRONTEND_IMAGE }}:latest
+        build-args: |
+          NODE_ENV=production
+        cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache
+        cache-to: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache,mode=max
+
+  backend-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf ./*
+        rm -rf ./.* || true
+
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdbclone-backend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        fetch-depth: 1
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "18"
+        cache: 'npm'
+        cache-dependency-path: './package-lock.json'
+
+    - name: Install Backend Dependencies
+      run: |
+        npm install
+        npm cache verify
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and Push Backend Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ env.BACKEND_IMAGE }}:latest
+        build-args: |
+          NODE_ENV=production
+        cache-from: type=registry,ref=${{ env.BACKEND_IMAGE }}:buildcache
+        cache-to: type=registry,ref=${{ env.BACKEND_IMAGE }}:buildcache,mode=max
+
+  deploy:
+    needs: [ frontend-build, backend-build ]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://prod.frontend.jayachandran.xyz
+    steps:
+    - name: Clean workspace
+      run: |
+        rm -rf *
+        rm -rf .git
+    - name: Checkout Backend Code
+      uses: actions/checkout@v4
+      with:
+        repository: jai3747/imdb-clone-backend
+        token: ${{ secrets.GH_PAT }}
+        clean: true
+        force: true
+
+    - name: Setup Kubernetes Tools
+      uses: ./.github/actions/k8s-setup
+      with:
+        helm-version: ${{ env.HELM_VERSION }}
+        gcp-credentials: ${{ secrets.GCP_SA_KEY }}
+        gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
+        cluster-name: ${{ env.CLUSTER_NAME }}
+        cluster-zone: ${{ env.CLUSTER_ZONE }}
+
+    # Add Helm repositories
+    - name: Add Helm Repositories
+      run: |
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+
+    # Install NGINX Ingress Controller
+    - name: Install NGINX Ingress Controller
+      run: |
+        helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress-nginx \
+          --create-namespace \
+          --set controller.service.type=LoadBalancer \
+          --set controller.service.externalTrafficPolicy=Local \
+          --set controller.resources.requests.cpu=100m \
+          --set controller.resources.requests.memory=256Mi \
+          --set controller.resources.limits.cpu=200m \
+          --set controller.resources.limits.memory=512Mi \
+          --wait --timeout 5m
+
+    - name: Cache Helm dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.CHART_PATH }}/charts
+        key: ${{ runner.os }}-helm-${{ hashFiles('**/Chart.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-helm-
+
+    - name: Update Helm Dependencies
+      run: |
+        cd ${{ env.CHART_PATH }}
+        helm dependency build
+        helm dependency update
+
+    # Deploy the application
+    - name: Deploy to Production
+      run: |
+        helm upgrade --install imdb-clone-prod ${{ env.CHART_PATH }} \
+          --set frontend.image.repository=jai3747/imdb-clone-frontend-prod \
+          --set frontend.image.tag=latest \
+          --set backend.image.repository=jai3747/imdb-clone-backend-prod \
+          --set backend.image.tag=latest \
+          --set mongodb.enabled=true \
+          --set mongodb.auth.enabled=true \
+          --set mongodb.auth.rootPassword=${{ secrets.MONGODB_ROOT_PASSWORD }} \
+          --set frontend.domain=prod.frontend.jayachandran.xyz \
+          --set backend.domain=prod.backend.jayachandran.xyz \
+          --values ./imdb-clone/values-prod.yaml \
+          --namespace production \
+          --create-namespace

@@ -1,0 +1,178 @@
+body{
+  margin: 0 ;
+  padding: 0 ;
+}
+.logo{
+  background-color: #f5c518;
+  color: black;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 5px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.formGroup{
+  display: flex;
+  flex-direction: column;
+  margin: 16px;
+  gap: 10px;
+}
+.inputBox{
+  height: 40px;
+  width: 1500px;
+  margin: 20px;
+}
+.btn{
+  background-color: blue;
+  color: white;
+  height: 20px;
+  width: 1500px;
+  border: none;
+  padding: 25px;
+  margin: 20px;
+}
+.movie-poster{
+  height: 500px;
+  width: 340px;
+  object-fit: cover;
+}
+.movie-container{
+  width: 350px;
+  height: min-content;
+  border-radius : 12px;
+  padding: 10px;
+  /* justify-content: center; */
+}
+.movie-specs{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.movie-name,.label,.names{
+  font-size: 20px;
+}
+.yearOfRelease{
+  background-color: transparent;
+  border: 1px solid #5799ef;
+  font-size: 15px;
+  padding: 5px;
+  border-radius: 5px;
+}
+.names{
+  color: #5799ef;
+}
+.movie-rating{
+  font-size: 18px;
+}
+.movie-list{
+  display: flex;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  gap: 10px;
+}
+.button-group{
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.like{
+  background-color: blue;
+  color: white;
+  border : none;
+  border-radius: 50%;
+  height: 50px;
+  width:50px;
+}
+.dislike{
+  background-color: red;
+  color : white;
+  border : none;
+  border-radius: 50%;
+  height: 50px;
+  width:50px;
+}
+.input-box{
+  margin-top: 50px;
+  height: 30px;
+  width: 250px;
+}
+.add-button{
+  margin-top: 50px;
+  height: 30px;
+  width: 50px;
+}
+/* .movie-name{
+  margin: 0;
+}
+.movie-summary{
+  margin-top: 0;
+} */
+.game-box{
+  height: 150px;
+  width: 150px;
+  border: 1px solid black;
+  font-size: 150px;
+  font-family: Georgia, Times, 'Times New Roman', serif;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: pointer;
+}
+.full-game{
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+.board{
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 490px;
+}
+.custom-buttons{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.movie-detail-container{
+  max-width: 900px;
+  padding: 25px;
+}
+
+@media screen and (min-width: 992px){
+  .trailer-class{
+      width: 100%;
+      overflow: hidden;
+  }
+  
+}
+
+@media screen and (max-width : 768px){
+  .trailer-class{
+      width: 100%;
+      overflow: hidden;
+  }
+  
+}
+@media screen and (max-width : 576px){
+ 
+  .board{
+  max-width: 250px;
+  }
+  .game-box{
+      height: 75px;
+      width: 75px;
+      font-size: 75px;
+  }
+  .trailer-class{
+      width: 100%;
+  }
+  
+}
+@media screen and (max-width : 350px){
+  
+  
+  
+}
