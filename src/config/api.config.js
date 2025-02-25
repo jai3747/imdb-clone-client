@@ -1,6 +1,6 @@
 // config/api.config.js
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://34.47.164.110:5000',
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://34.93.196.67:5000',
   TIMEOUT: 10000,
   ENDPOINTS: {
     HEALTH: '/health',
