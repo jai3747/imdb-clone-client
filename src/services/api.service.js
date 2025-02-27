@@ -1,8 +1,8 @@
 // src/services/api.service.js
-
 import axios from 'axios';
 import { API_CONFIG } from '../config/api.config';
 
+// Create axios instance with interceptors for better error handling
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
@@ -10,6 +10,36 @@ const apiClient = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// Add request interceptor for logging
+apiClient.interceptors.request.use(
+  config => {
+    console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  error => {
+    console.error('Request error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for logging
+apiClient.interceptors.response.use(
+  response => {
+    console.log(`API Response from ${response.config.url}: Status ${response.status}`);
+    return response;
+  },
+  error => {
+    if (error.response) {
+      console.error(`API Error from ${error.config.url}: Status ${error.response.status}`, error.response.data);
+    } else if (error.request) {
+      console.error('API Error: No response received', error.request);
+    } else {
+      console.error('API Error:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 const apiService = {
   // Health check methods
