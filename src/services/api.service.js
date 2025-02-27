@@ -16,13 +16,13 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   config => {
     // Ensure the URL starts with HTTP, not HTTPS
-    if (config.url && !config.url.startsWith('/')) {
-      config.url = config.url.replace('https://', 'http://');
+    if (config.url && !config.url.startsWith("/")) {
+      config.url = config.url.replace("https://", "http://");
     }
     
     // Make sure baseURL is using HTTP protocol
-    if (config.baseURL && config.baseURL.startsWith('https://')) {
-      config.baseURL = config.baseURL.replace('https://', 'http://');
+    if (config.baseURL && config.baseURL.startsWith("https://")) {
+      config.baseURL = config.baseURL.replace("https://", "http://");
     }
     
     console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
@@ -31,7 +31,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   error => {
-    console.error('Request error:', error);
+    console.error("Request error:", error);
     return Promise.reject(error);
   }
 );
@@ -47,18 +47,18 @@ apiClient.interceptors.response.use(
     // Calculate request duration even for errors
     const duration = error.config?.metadata?.startTime 
       ? new Date().getTime() - error.config.metadata.startTime 
-      : 'unknown';
+      : "unknown";
     
     if (error.response) {
       console.error(`API Error from ${error.config.url}: Status ${error.response.status} (${duration}ms)`, error.response.data);
     } else if (error.request) {
       console.error(`API Error: No response received after ${duration}ms`, error.request);
       // Check if it's a timeout error and provide more specific logging
-      if (error.code === 'ECONNABORTED') {
+      if (error.code === "ECONNABORTED") {
         console.error(`Request timed out after ${API_CONFIG.TIMEOUT}ms. Consider increasing the timeout in API_CONFIG.`);
       }
     } else {
-      console.error('API Error:', error.message);
+      console.error("API Error:", error.message);
     }
     return Promise.reject(error);
   }
@@ -88,7 +88,7 @@ const apiService = {
       });
     } catch (error) {
       console.error("Health check failed:", error);
-      throw new Error(error.response?.data?.message || 'Health check failed');
+      throw new Error(error.response?.data?.message || "Health check failed");
     }
   },
 
@@ -115,7 +115,7 @@ const apiService = {
       });
     } catch (error) {
       console.error("Failed to fetch movies:", error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch movies');
+      throw new Error(error.response?.data?.message || "Failed to fetch movies");
     }
   },
 
@@ -127,7 +127,7 @@ const apiService = {
       });
     } catch (error) {
       console.error(`Failed to fetch movie ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch movie');
+      throw new Error(error.response?.data?.message || "Failed to fetch movie");
     }
   },
 
@@ -137,7 +137,7 @@ const apiService = {
       return response.data;
     } catch (error) {
       console.error("Failed to add movie:", error);
-      throw new Error(error.response?.data?.message || 'Failed to add movie');
+      throw new Error(error.response?.data?.message || "Failed to add movie");
     }
   },
 
@@ -147,7 +147,7 @@ const apiService = {
       return response.data;
     } catch (error) {
       console.error(`Failed to update movie ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to update movie');
+      throw new Error(error.response?.data?.message || "Failed to update movie");
     }
   },
 
@@ -157,7 +157,7 @@ const apiService = {
       return response.data;
     } catch (error) {
       console.error(`Failed to delete movie ${id}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to delete movie');
+      throw new Error(error.response?.data?.message || "Failed to delete movie");
     }
   },
 
@@ -170,7 +170,7 @@ const apiService = {
       });
     } catch (error) {
       console.error("Failed to fetch actors:", error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch actors');
+      throw new Error(error.response?.data?.message || "Failed to fetch actors");
     }
   },
 
@@ -180,7 +180,7 @@ const apiService = {
       return response.data;
     } catch (error) {
       console.error("Failed to add actor:", error);
-      throw new Error(error.response?.data?.message || 'Failed to add actor');
+      throw new Error(error.response?.data?.message || "Failed to add actor");
     }
   },
 
@@ -193,7 +193,7 @@ const apiService = {
       });
     } catch (error) {
       console.error("Failed to fetch producers:", error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch producers');
+      throw new Error(error.response?.data?.message || "Failed to fetch producers");
     }
   },
 
@@ -203,7 +203,7 @@ const apiService = {
       return response.data;
     } catch (error) {
       console.error("Failed to add producer:", error);
-      throw new Error(error.response?.data?.message || 'Failed to add producer');
+      throw new Error(error.response?.data?.message || "Failed to add producer");
     }
   },
 
@@ -216,7 +216,7 @@ const apiService = {
       });
     } catch (error) {
       console.error(`GET request failed for ${endpoint}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch data');
+      throw new Error(error.response?.data?.message || "Failed to fetch data");
     }
   },
 
@@ -226,7 +226,7 @@ const apiService = {
       return response.data;
     } catch (error) {
       console.error(`POST request failed for ${endpoint}:`, error);
-      throw new Error(error.response?.data?.message || 'Failed to post data');
+      throw new Error(error.response?.data?.message || "Failed to post data");
     }
   }
 };
