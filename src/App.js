@@ -275,11 +275,12 @@ import {
 } from "@mui/icons-material";
 import apiService from "./services/api.service";
 import { API_CONFIG } from "./config/api.config";
-import AddMovie from "./components/AddMovie";
-import Movie from "./components/Movie";
-import AddActor from "./components/AddActor";
-import AddProducer from "./components/AddProducer";
-import EditMovies from "./components/EditMovies";
+import AddMovie from "./AddMovie";
+import Movie from "./Movie";
+import AddActor from "./AddActor";
+import AddProducer from "./AddProducer";
+import EditMovies from "./EditMovies";
+
 import "./App.css";
 
 function App() {
