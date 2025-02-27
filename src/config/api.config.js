@@ -1,6 +1,6 @@
 // config/api.config.js
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://imdb-dev-backend.jayachandram.xyz',
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://imdb-dev-backend.jayachandran.xyz',
   TIMEOUT: 10000,
   ENDPOINTS: {
     HEALTH: '/health',
