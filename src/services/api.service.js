@@ -1,4 +1,4 @@
-// src/services/api.service.js/new
+// src/services/api.service.js
 import axios from 'axios';
 import { API_CONFIG } from '../config/api.config';
 
@@ -12,9 +12,19 @@ const apiClient = axios.create({
   withCredentials: true // Enable sending cookies with cross-origin requests
 });
 
-// Add request interceptor for logging
+// Add request interceptor for logging and ensuring HTTP protocol
 apiClient.interceptors.request.use(
   config => {
+    // Ensure the URL starts with HTTP, not HTTPS
+    if (config.url && !config.url.startsWith('/')) {
+      config.url = config.url.replace('https://', 'http://');
+    }
+    
+    // Make sure baseURL is using HTTP protocol
+    if (config.baseURL && config.baseURL.startsWith('https://')) {
+      config.baseURL = config.baseURL.replace('https://', 'http://');
+    }
+    
     console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
     // Add timestamp to track request duration
     config.metadata = { startTime: new Date().getTime() };
