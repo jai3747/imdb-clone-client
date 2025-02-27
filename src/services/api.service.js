@@ -1,4 +1,4 @@
-// src/services/api.service.js
+// src/services/api.service.js/new
 import axios from 'axios';
 import { API_CONFIG } from '../config/api.config';
 
@@ -8,13 +8,16 @@ const apiClient = axios.create({
   timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Enable sending cookies with cross-origin requests
 });
 
 // Add request interceptor for logging
 apiClient.interceptors.request.use(
   config => {
     console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
+    // Add timestamp to track request duration
+    config.metadata = { startTime: new Date().getTime() };
     return config;
   },
   error => {
@@ -26,14 +29,24 @@ apiClient.interceptors.request.use(
 // Add response interceptor for logging
 apiClient.interceptors.response.use(
   response => {
-    console.log(`API Response from ${response.config.url}: Status ${response.status}`);
+    const duration = new Date().getTime() - response.config.metadata.startTime;
+    console.log(`API Response from ${response.config.url}: Status ${response.status} (${duration}ms)`);
     return response;
   },
   error => {
+    // Calculate request duration even for errors
+    const duration = error.config?.metadata?.startTime 
+      ? new Date().getTime() - error.config.metadata.startTime 
+      : 'unknown';
+    
     if (error.response) {
-      console.error(`API Error from ${error.config.url}: Status ${error.response.status}`, error.response.data);
+      console.error(`API Error from ${error.config.url}: Status ${error.response.status} (${duration}ms)`, error.response.data);
     } else if (error.request) {
-      console.error('API Error: No response received', error.request);
+      console.error(`API Error: No response received after ${duration}ms`, error.request);
+      // Check if it's a timeout error and provide more specific logging
+      if (error.code === 'ECONNABORTED') {
+        console.error(`Request timed out after ${API_CONFIG.TIMEOUT}ms. Consider increasing the timeout in API_CONFIG.`);
+      }
     } else {
       console.error('API Error:', error.message);
     }
@@ -41,12 +54,28 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Retry mechanism for API calls
+const retryRequest = async (apiCall, retries = 2, delay = 1000) => {
+  try {
+    return await apiCall();
+  } catch (error) {
+    if (retries <= 0 || (error.response && error.response.status < 500)) {
+      throw error;
+    }
+    console.log(`Retrying request in ${delay}ms... (${retries} attempts left)`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return retryRequest(apiCall, retries - 1, delay * 2);
+  }
+};
+
 const apiService = {
   // Health check methods
   checkHealth: async () => {
     try {
-      const response = await apiClient.get(API_CONFIG.ENDPOINTS.HEALTH);
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await apiClient.get(API_CONFIG.ENDPOINTS.HEALTH);
+        return response.data;
+      });
     } catch (error) {
       console.error("Health check failed:", error);
       throw new Error(error.response?.data?.message || 'Health check failed');
@@ -56,9 +85,11 @@ const apiService = {
   checkApiStatus: async (endpoint) => {
     console.log(`Checking API status for endpoint: ${endpoint}`);
     try {
-      const response = await apiClient.get(endpoint);
-      console.log(`Status response for ${endpoint}:`, response.data);
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await apiClient.get(endpoint);
+        console.log(`Status response for ${endpoint}:`, response.data);
+        return response.data;
+      });
     } catch (error) {
       console.error(`API status check failed for ${endpoint}:`, error);
       return { status: "error" };
@@ -68,8 +99,10 @@ const apiService = {
   // Movie methods
   getMovies: async () => {
     try {
-      const response = await apiClient.get(API_CONFIG.ENDPOINTS.MOVIES);
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await apiClient.get(API_CONFIG.ENDPOINTS.MOVIES);
+        return response.data;
+      });
     } catch (error) {
       console.error("Failed to fetch movies:", error);
       throw new Error(error.response?.data?.message || 'Failed to fetch movies');
@@ -78,8 +111,10 @@ const apiService = {
 
   getMovie: async (id) => {
     try {
-      const response = await apiClient.get(`${API_CONFIG.ENDPOINTS.MOVIES}/${id}`);
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await apiClient.get(`${API_CONFIG.ENDPOINTS.MOVIES}/${id}`);
+        return response.data;
+      });
     } catch (error) {
       console.error(`Failed to fetch movie ${id}:`, error);
       throw new Error(error.response?.data?.message || 'Failed to fetch movie');
@@ -119,8 +154,10 @@ const apiService = {
   // Actor methods
   getActors: async () => {
     try {
-      const response = await apiClient.get(API_CONFIG.ENDPOINTS.ACTORS);
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await apiClient.get(API_CONFIG.ENDPOINTS.ACTORS);
+        return response.data;
+      });
     } catch (error) {
       console.error("Failed to fetch actors:", error);
       throw new Error(error.response?.data?.message || 'Failed to fetch actors');
@@ -140,8 +177,10 @@ const apiService = {
   // Producer methods
   getProducers: async () => {
     try {
-      const response = await apiClient.get(API_CONFIG.ENDPOINTS.PRODUCERS);
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await apiClient.get(API_CONFIG.ENDPOINTS.PRODUCERS);
+        return response.data;
+      });
     } catch (error) {
       console.error("Failed to fetch producers:", error);
       throw new Error(error.response?.data?.message || 'Failed to fetch producers');
@@ -161,8 +200,10 @@ const apiService = {
   // Generic methods
   get: async (endpoint) => {
     try {
-      const response = await apiClient.get(endpoint);
-      return response.data;
+      return await retryRequest(async () => {
+        const response = await apiClient.get(endpoint);
+        return response.data;
+      });
     } catch (error) {
       console.error(`GET request failed for ${endpoint}:`, error);
       throw new Error(error.response?.data?.message || 'Failed to fetch data');
