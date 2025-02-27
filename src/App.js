@@ -1,3 +1,4 @@
+// src/App.js
 import { useState, useEffect, useCallback } from "react";
 import { ThemeProvider } from "@emotion/react";
 import {
@@ -8,8 +9,6 @@ import {
   createTheme,
   Box,
   CircularProgress,
-  Snackbar,
-  Alert,
 } from "@mui/material";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import {
@@ -26,14 +25,12 @@ import Movie from "./Movie";
 import AddActor from "./AddActor";
 import AddProducer from "./AddProducer";
 import EditMovies from "./EditMovies";
-
 import "./App.css";
 
 function App() {
   const [mode, setMode] = useState(() => localStorage.getItem("theme") || "dark");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [statuses, setStatuses] = useState({
     backend: false,
     database: false,
@@ -41,9 +38,6 @@ function App() {
     movieApi: false,
     producerApi: false,
   });
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState("info");
 
   const theme = createTheme({
     palette: {
@@ -61,8 +55,6 @@ function App() {
   const checkAllStatuses = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      console.log("Checking server status...");
       
       // Check backend health and database status
       let healthData;
@@ -71,23 +63,13 @@ function App() {
       
       try {
         healthData = await apiService.checkHealth();
-        console.log("Health data received:", healthData);
-        
-        // Check if we received a response with status field
-        if (healthData && typeof healthData === 'object') {
-          backendStatus = healthData.status === "success";
-          databaseStatus = healthData.database === "connected";
-          console.log("Health check succeeded:", healthData);
-        } else {
-          console.warn("Unexpected health check response format:", healthData);
-          backendStatus = false;
-          databaseStatus = false;
-        }
+        backendStatus = true;
+        databaseStatus = healthData.database === "connected";
+        console.log("Health check succeeded:", healthData);
       } catch (error) {
         console.error("Health check failed:", error);
         backendStatus = false;
         databaseStatus = false;
-        setError("Failed to connect to backend server. Please try again later.");
       }
       
       // Check individual API endpoints status
@@ -95,31 +77,28 @@ function App() {
       let movieApiStatus = false; 
       let producerApiStatus = false;
       
-      // Only check API statuses if backend is online
-      if (backendStatus) {
-        try {
-          const actorStatus = await apiService.checkApiStatus(API_CONFIG.ENDPOINTS.API_STATUS.ACTOR);
-          actorApiStatus = actorStatus?.status === "success";
-          console.log("Actor API status check:", actorStatus);
-        } catch (error) {
-          console.error("Actor API status check failed:", error);
-        }
-        
-        try {
-          const movieStatus = await apiService.checkApiStatus(API_CONFIG.ENDPOINTS.API_STATUS.MOVIE);
-          movieApiStatus = movieStatus?.status === "success";
-          console.log("Movie API status check:", movieStatus);
-        } catch (error) {
-          console.error("Movie API status check failed:", error);
-        }
-        
-        try {
-          const producerStatus = await apiService.checkApiStatus(API_CONFIG.ENDPOINTS.API_STATUS.PRODUCER);
-          producerApiStatus = producerStatus?.status === "success";
-          console.log("Producer API status check:", producerStatus);
-        } catch (error) {
-          console.error("Producer API status check failed:", error);
-        }
+      try {
+        const actorStatus = await apiService.checkApiStatus(API_CONFIG.ENDPOINTS.API_STATUS.ACTOR);
+        actorApiStatus = actorStatus.status === "success";
+        console.log("Actor API status check:", actorStatus);
+      } catch (error) {
+        console.error("Actor API status check failed:", error);
+      }
+      
+      try {
+        const movieStatus = await apiService.checkApiStatus(API_CONFIG.ENDPOINTS.API_STATUS.MOVIE);
+        movieApiStatus = movieStatus.status === "success";
+        console.log("Movie API status check:", movieStatus);
+      } catch (error) {
+        console.error("Movie API status check failed:", error);
+      }
+      
+      try {
+        const producerStatus = await apiService.checkApiStatus(API_CONFIG.ENDPOINTS.API_STATUS.PRODUCER);
+        producerApiStatus = producerStatus.status === "success";
+        console.log("Producer API status check:", producerStatus);
+      } catch (error) {
+        console.error("Producer API status check failed:", error);
       }
       
       // Update statuses
@@ -138,13 +117,6 @@ function App() {
         movieApi: movieApiStatus,
         producerApi: producerApiStatus,
       });
-
-      // Show snackbar if backend is offline
-      if (!backendStatus && !loading) {
-        setSnackbarMessage("Backend server is offline. Some features may not work properly.");
-        setSnackbarSeverity("warning");
-        setSnackbarOpen(true);
-      }
       
     } catch (error) {
       console.error("Overall status check failed:", error);
@@ -155,14 +127,12 @@ function App() {
         movieApi: false,
         producerApi: false,
       });
-      setError("Failed to check API status. Please try again later.");
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, []);
 
   useEffect(() => {
-    console.log("App component mounted");
     checkAllStatuses();
     const interval = setInterval(checkAllStatuses, 30000);
     return () => clearInterval(interval);
@@ -172,9 +142,9 @@ function App() {
     localStorage.setItem("theme", mode);
   }, [mode]);
 
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-  };
+  useEffect(() => {
+    console.log("Current API Status:", statuses);
+  }, [statuses]);
 
   const StatusIndicator = ({ isOnline, label }) => (
     <Box
@@ -269,32 +239,15 @@ function App() {
           </Toolbar>
         </AppBar>
 
-        {error && (
-          <Alert severity="error" sx={{ m: 2 }}>
-            {error}
-          </Alert>
-        )}
-
         <Box sx={{ p: 3 }}>
           <Routes>
             <Route path="/" element={<Movie />} />
             <Route path="/add-movies" element={<AddMovie />} />
             <Route path="/add-actor" element={<AddActor />} />
             <Route path="/add-producer" element={<AddProducer />} />
-            <Route path="/movies/edit/:id" element={<EditMovies />} />
+            <Route path="movies/edit/:id" element={<EditMovies />} />
           </Routes>
         </Box>
-
-        <Snackbar 
-          open={snackbarOpen} 
-          autoHideDuration={6000} 
-          onClose={handleSnackbarClose}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
-            {snackbarMessage}
-          </Alert>
-        </Snackbar>
       </Paper>
     </ThemeProvider>
   );
