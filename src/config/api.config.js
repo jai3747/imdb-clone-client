@@ -1,7 +1,8 @@
-// config/api.config.js
+
+// config/api.config.js/new
 export const API_CONFIG = {
   BASE_URL: process.env.REACT_APP_API_URL || 'http://imdb-dev-backend.jayachandran.xyz',
-  TIMEOUT: 10000,
+  TIMEOUT: 30000, // Increased from 10000 to 30000 (30 seconds)
   ENDPOINTS: {
     HEALTH: '/health',
     MOVIES: '/movies',
